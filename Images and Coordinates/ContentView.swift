@@ -23,7 +23,6 @@ struct ContentView_Previews: PreviewProvider {
 struct Home: View {
     
     @State var selected: [UIImage] = []
-    @State var data: [Images] = []
     @State var show = false
     var body: some View {
         ZStack {
@@ -37,7 +36,7 @@ struct Home: View {
                 }) {
                     Text("Image Picker")
                         .foregroundColor(.white)
-                        .padding(.vertical)
+                        .padding(.vertical, 10)
                         .frame(width: UIScreen.main.bounds.width / 2)
                 }
                 .background(Color.red)
@@ -45,7 +44,7 @@ struct Home: View {
             }
             
             if self.show {
-                CustomPicker(selected: self.$selected, data: self.$data, show: self.$show)
+                CustomPicker(selected: self.$selected, show: self.$show)
             }
         }
     }
@@ -54,7 +53,7 @@ struct Home: View {
 struct CustomPicker: View {
     
     @Binding var selected: [UIImage]
-    @Binding var data: [Images]
+    @State var data: [Images] = []
     @State var grid: [Int] = []
     @Binding var show: Bool
     
@@ -73,15 +72,37 @@ struct CustomPicker: View {
                     
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 20) {
-                            ForEach(0..<self.data.count, id: \.self) {i in
-                                HStack(spacing: 15) {
+                            ForEach(self.grid, id: \.self) {i in
+                                HStack(spacing: 8) {
                                     ForEach(i..<i+3, id: \.self){j in
-                                        Card(data: self.data[j])
+                                        HStack {
+                                            if j < self.data.count {
+                                                Card(data: self.data[j], selected: self.$selected)
+                                            }
+                                        }
+                                    }
+                                    if self.data.count % 3 != 0 && i == self.grid.last! {
+                                        Spacer()
                                     }
                                 }
+                                .padding(.leading, (self.data.count % 3 != 0 && i == self.grid.last!) ? 15: 0)
                             }
                         }
                     }
+                    
+                    Button(action: {
+                        self.show.toggle()
+                    }) {
+                        
+                        Text("Select")
+                            .foregroundColor(.white)
+                            .padding(.vertical, 10)
+                            .frame(width: UIScreen.main.bounds.width / 2)
+                    }
+                    .background(Color.red.opacity((self.selected.count != 0) ? 1 : 0.5))
+                    .clipShape(Capsule())
+                    .padding(.bottom, 25)
+                    .disabled((self.selected.count != 0) ? false : true)
                 }
                 
                 else {
@@ -142,12 +163,46 @@ struct Images {
 }
 
 struct Card : View {
-    var data: Images
+    @State var data: Images
+    @Binding var selected : [UIImage]
     
     var body: some View {
-        Image(uiImage: self.data.image)
-        .resizable()
+        
+        ZStack {
+            Image(uiImage: self.data.image)
+            .resizable()
+            
+            if self.data.selected {
+                ZStack {
+                    Color.black.opacity(0.5)
+                    Image(systemName: "checkmark")
+                        .resizable()
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(.white)
+                }
+            }
+        }
         .frame(width: (UIScreen.main.bounds.width - 80) / 3, height: 90)
+        .onTapGesture {
+            if !data.selected {
+                print(data.image.hashValue)
+            }
+            
+            if !self.data.selected {
+                self.data.selected = true
+                self.selected.append(self.data.image)
+            }
+            
+            else {
+                for i in 0..<self.selected.count {
+                    if self.selected[i] == self.data.image {
+                        self.selected.remove(at: i)
+                        self.data.selected = false
+                        return
+                    }
+                }
+            }
+        }
     }
 }
 
