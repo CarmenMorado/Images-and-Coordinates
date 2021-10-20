@@ -24,11 +24,66 @@ struct Home: View {
     
     @State var selected: [UIImage] = []
     @State var show = false
+    @State var rectDict = [String: Rect]()
+    @State var rectArray: [Rect] = []
+ 
     var body: some View {
         ZStack {
             Color.black.opacity(0.07).edgesIgnoringSafeArea(.all)
             
             VStack {
+                if !self.selected.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 20) {
+                            ForEach(self.selected, id: \.self) {i in
+                               Image(uiImage: i)
+                                .resizable()
+                                .frame(width: UIScreen.main.bounds.width - 40, height: 250)
+                                .cornerRadius(15)
+                                .gesture(DragGesture(minimumDistance: 0).onEnded({ (value) in
+                                
+                                    let startingCoordinate = (value.startLocation.x, value.startLocation.y)
+                                    
+                                    let endCoordinate = (value.location.x, value.location.y)
+            
+                                    let pointOfOrigin = (min(value.startLocation.x, value.location.x), min(value.startLocation.y, value.location.y))
+
+                                    let width = abs(value.location.x - value.startLocation.x)
+                                    
+                                    let height = abs(value.location.y - value.startLocation.y)
+                                    
+                                    print(startingCoordinate)
+                                    print(endCoordinate)
+                                    print(pointOfOrigin)
+                                    
+                                    let rect = Rect(x: pointOfOrigin.0, y: pointOfOrigin.1, width: width, height: height)
+                                    
+                                    rectArray.append(rect)
+                                    
+                                    for i in 0..<rectArray.count {
+                                        rectDict["Image name : \(selected.hashValue)"] = rectArray[i]
+                                    }
+                                    
+                                    let jsonString = "{\"location\": \"the moon\"}"
+
+                                    if let documentDirectory = FileManager.default.urls(for: .documentDirectory,
+                                                                                        in: .userDomainMask).first {
+                                        let pathWithFilename = documentDirectory.appendingPathComponent("myJsonString.json")
+                                        do {
+                                            try jsonString.write(to: pathWithFilename,
+                                                                 atomically: true,
+                                                                 encoding: .utf8)
+                                        } catch {
+                                            // Handle error
+                                        }
+                                    }
+                                }))
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+                
                 Button(action: {
                     self.selected.removeAll()
                     self.show.toggle()
@@ -41,6 +96,7 @@ struct Home: View {
                 }
                 .background(Color.red)
                 .clipShape(Capsule())
+                .padding(.top, 25)
             }
             
             if self.show {
@@ -56,6 +112,7 @@ struct CustomPicker: View {
     @State var data: [Images] = []
     @State var grid: [Int] = []
     @Binding var show: Bool
+    @State var disabled = false
     
     var body: some View {
         GeometryReader {geometry in
@@ -106,7 +163,13 @@ struct CustomPicker: View {
                 }
                 
                 else {
-                    Indicator()
+                    if self.disabled {
+                        Text("Enable Storage Access In Settings !!!")
+                    }
+                    
+                    else {
+                        Indicator()
+                    }
                 }
             }
             .frame(width: UIScreen.main.bounds.width - 40, height: UIScreen.main.bounds.height / 1.5, alignment: .center)
@@ -121,9 +184,12 @@ struct CustomPicker: View {
             PHPhotoLibrary.requestAuthorization{ (status) in
                 if status == .authorized {
                     self.getAllImages()
+                    self.disabled = false
                 }
+                
                 else {
                     print ("not authorized")
+                    self.disabled = true
                 }
             }
         }
@@ -185,7 +251,7 @@ struct Card : View {
         .frame(width: (UIScreen.main.bounds.width - 80) / 3, height: 90)
         .onTapGesture {
             if !data.selected {
-                print(data.image.hashValue)
+                //print(selected.hashValue)
             }
             
             if !self.data.selected {
@@ -216,4 +282,11 @@ struct Indicator : UIViewRepresentable {
     func updateUIView(_ uiView: UIViewType, context: Context) {
         
     }
+}
+
+struct Rect {
+    var x: CGFloat
+    var y: CGFloat
+    var width: CGFloat
+    var height: CGFloat
 }
