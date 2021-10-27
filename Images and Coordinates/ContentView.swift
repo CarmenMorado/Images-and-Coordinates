@@ -42,9 +42,9 @@ struct Home: View {
                                 .cornerRadius(15)
                                 .gesture(DragGesture(minimumDistance: 0).onEnded({ (value) in
                                 
-                                    let startingCoordinate = (value.startLocation.x, value.startLocation.y)
+                                 //   let startingCoordinate = (value.startLocation.x, value.startLocation.y)
                                     
-                                    let endCoordinate = (value.location.x, value.location.y)
+                                 //   let endCoordinate = (value.location.x, value.location.y)
             
                                     let pointOfOrigin = (min(value.startLocation.x, value.location.x), min(value.startLocation.y, value.location.y))
 
@@ -52,9 +52,11 @@ struct Home: View {
                                     
                                     let height = abs(value.location.y - value.startLocation.y)
                                     
-                                    print(startingCoordinate)
-                                    print(endCoordinate)
-                                    print(pointOfOrigin)
+                                  //  print(startingCoordinate)
+                                  //  print(endCoordinate)
+                                  //  print(pointOfOrigin)
+                                    
+                                   // print(selected.
                                     
                                     let rect = Rect(x: pointOfOrigin.0, y: pointOfOrigin.1, width: width, height: height)
                                     
@@ -64,11 +66,37 @@ struct Home: View {
                                         rectDict["Image name : \(selected.hashValue)"] = rectArray[i]
                                     }
                                     
-                                    let jsonString = "{\"location\": \"the moon\"}"
+                                    
+                                    
+                                   // print(rectArray)
+                                  //  print(rectDict)
+                                    
+                                    //let jsonString = "{\"location\": \"the moon\"}"
+                                    
+                                    let jsonString = """
+                                    [
+                                        {
+                                            "image": "\(selected.hashValue)",
+                                            "annotations": [
+                                                {
+                                                    "coordinates": {
+                                                        "x": \((pointOfOrigin.0).truncate(places: 0)), "y": \((pointOfOrigin.1).truncate(places: 0)), "width": \((width).truncate(places: 0)), "height": \((height).truncate(places: 0))
+                                                    }
+                                                },
+                                                {
+                                                    "label": "tuna",
+                                                    "coordinates": {
+                                                        "x": 230, "y": 321, "width": 50, "height": 50
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                """
 
                                     if let documentDirectory = FileManager.default.urls(for: .documentDirectory,
                                                                                         in: .userDomainMask).first {
-                                        let pathWithFilename = documentDirectory.appendingPathComponent("myJsonString.json")
+                                        let pathWithFilename = documentDirectory.appendingPathComponent("Essaie.json")
                                         do {
                                             try jsonString.write(to: pathWithFilename,
                                                                  atomically: true,
@@ -77,6 +105,8 @@ struct Home: View {
                                             // Handle error
                                         }
                                     }
+                                    
+                                    print(readLocalFile(forName: "Essaie") ?? "")
                                 }))
                             }
                         }
@@ -251,7 +281,8 @@ struct Card : View {
         .frame(width: (UIScreen.main.bounds.width - 80) / 3, height: 90)
         .onTapGesture {
             if !data.selected {
-                //print(selected.hashValue)
+               // uniqueID = selected.hashValue
+               // print(selected.hashValue)
             }
             
             if !self.data.selected {
@@ -289,4 +320,24 @@ struct Rect {
     var y: CGFloat
     var width: CGFloat
     var height: CGFloat
+}
+
+private func readLocalFile(forName name: String) -> Data? {
+    do {
+        if let bundlePath = Bundle.main.path(forResource: name,
+                                             ofType: "json"),
+            let jsonData = try String(contentsOfFile: bundlePath).data(using: .utf8) {
+            return jsonData
+        }
+    } catch {
+        print(error)
+    }
+    
+    return nil
+}
+
+extension CGFloat {
+    func truncate(places : CGFloat)-> CGFloat {
+        return CGFloat(floor(pow(10.0, CGFloat(places)) * self)/pow(10.0, CGFloat(places)))
+    }
 }
