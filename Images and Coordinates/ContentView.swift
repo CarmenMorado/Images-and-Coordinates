@@ -24,7 +24,7 @@ struct Home: View {
     
     @State var selected: [UIImage] = []
     @State var show = false
-    @State var rectDict = [String: Rect]()
+    @State var rectDict = [String: [Rect]]()
     @State var rectArray: [Rect] = []
  
     var body: some View {
@@ -41,7 +41,7 @@ struct Home: View {
                                 .frame(width: UIScreen.main.bounds.width - 40, height: 250)
                                 .cornerRadius(15)
                                 .gesture(DragGesture(minimumDistance: 0).onEnded({ (value) in
-                                
+                                    
                                  //   let startingCoordinate = (value.startLocation.x, value.startLocation.y)
                                     
                                  //   let endCoordinate = (value.location.x, value.location.y)
@@ -62,14 +62,13 @@ struct Home: View {
                                     
                                     rectArray.append(rect)
                                     
-                                    for i in 0..<rectArray.count {
-                                        rectDict["Image name : \(selected.hashValue)"] = rectArray[i]
-                                    }
-                                    
+                                    //if (rectDict.count == 0 || rectDict["\(selected.hashValue)"] == nil) {
+                                        rectDict["\(selected.hashValue)"] = rectArray
+                                    //}
                                     
                                     
                                    // print(rectArray)
-                                  //  print(rectDict)
+                                   // print(rectDict)
                                     
                                     //let jsonString = "{\"location\": \"the moon\"}"
                                     
@@ -93,7 +92,28 @@ struct Home: View {
                                         }
                                     ]
                                 """
+                                    
+                                    var jsonString2 = """
+                                    [
+                                        {
 
+                                    """
+                               //     jsonString2.append("        image: \(selected.hashValue),")
+                               //     jsonString2.append("\n")
+                               //     jsonString2.append("""
+                               //         annotations: [
+                               //             {
+
+                           /// """)
+                                    jsonString2.append(makeJSON(dict: rectDict))
+                                    jsonString2.append("""
+                                            ]
+                                        }
+                                    ]
+                                    """)
+                                   print(jsonString2)
+                                  //  print((makeJSON(dict: rectDict)))
+                                    
                                     if let documentDirectory = FileManager.default.urls(for: .documentDirectory,
                                                                                         in: .userDomainMask).first {
                                         let pathWithFilename = documentDirectory.appendingPathComponent("Essaie.json")
@@ -106,7 +126,6 @@ struct Home: View {
                                         }
                                     }
                                     
-                                    print(readLocalFile(forName: "Essaie") ?? "")
                                 }))
                             }
                         }
@@ -130,210 +149,45 @@ struct Home: View {
             }
             
             if self.show {
-                CustomPicker(selected: self.$selected, show: self.$show)
+                CustomPicker(selected: self.$selected, show: self.$show, rectArray: self.$rectArray)
             }
         }
     }
 }
 
-struct CustomPicker: View {
-    
-    @Binding var selected: [UIImage]
-    @State var data: [Images] = []
-    @State var grid: [Int] = []
-    @Binding var show: Bool
-    @State var disabled = false
-    
-    var body: some View {
-        GeometryReader {geometry in
-           // Spacer()
-            VStack {
-                if !self.grid.isEmpty {
-                    HStack {
-                        Text("Pick a Image")
-                            .fontWeight(.bold)
-                        Spacer()
-                    }
-                    .padding(.leading)
-                    .padding(.top)
-                    
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 20) {
-                            ForEach(self.grid, id: \.self) {i in
-                                HStack(spacing: 8) {
-                                    ForEach(i..<i+3, id: \.self){j in
-                                        HStack {
-                                            if j < self.data.count {
-                                                Card(data: self.data[j], selected: self.$selected)
-                                            }
-                                        }
-                                    }
-                                    if self.data.count % 3 != 0 && i == self.grid.last! {
-                                        Spacer()
-                                    }
-                                }
-                                .padding(.leading, (self.data.count % 3 != 0 && i == self.grid.last!) ? 15: 0)
-                            }
-                        }
-                    }
-                    
-                    Button(action: {
-                        self.show.toggle()
-                    }) {
-                        
-                        Text("Select")
-                            .foregroundColor(.white)
-                            .padding(.vertical, 10)
-                            .frame(width: UIScreen.main.bounds.width / 2)
-                    }
-                    .background(Color.red.opacity((self.selected.count != 0) ? 1 : 0.5))
-                    .clipShape(Capsule())
-                    .padding(.bottom, 25)
-                    .disabled((self.selected.count != 0) ? false : true)
-                }
-                
-                else {
-                    if self.disabled {
-                        Text("Enable Storage Access In Settings !!!")
-                    }
-                    
-                    else {
-                        Indicator()
-                    }
-                }
-            }
-            .frame(width: UIScreen.main.bounds.width - 40, height: UIScreen.main.bounds.height / 1.5, alignment: .center)
-            .background(Color.white)
-            .cornerRadius(12)
-        }
-        .background(Color.black.opacity(0.1).edgesIgnoringSafeArea(.all))
-        .onTapGesture {
-            self.show.toggle()
-        }
-        .onAppear {
-            PHPhotoLibrary.requestAuthorization{ (status) in
-                if status == .authorized {
-                    self.getAllImages()
-                    self.disabled = false
-                }
-                
-                else {
-                    print ("not authorized")
-                    self.disabled = true
-                }
-            }
-        }
-    }
-    func getAllImages() {
-        let req = PHAsset.fetchAssets(with: .image, options: .none)
-        DispatchQueue.global(qos: .background).async {
-            req.enumerateObjects { (asset, _, _) in
-                
-                let options = PHImageRequestOptions()
-                options.isSynchronous = true
-                
-                PHCachingImageManager.default().requestImage(for: asset, targetSize: .init(), contentMode: .default, options: options) { (image, _) in
-                    
-                    let data1 = Images(image: image!, selected: false)
-                    self.data.append(data1)
-                }
-            }
-            
-            if req.count == self.data.count {
-                self.getGrid()
-            }
-        }
-    }
-    
-    func getGrid() {
-        for i in stride(from: 0, to: self.data.count, by: 3) {
-            self.grid.append(i)
-        }
-    }
-}
+private func makeJSON(dict: Dictionary<String, [Rect]>) -> String {
+    var jsonString = ""
+    for (key, rects) in dict {
+        jsonString.append("        image: \(key),")
+        jsonString.append("\n")
+        jsonString.append("""
+        annotations: [
+            {
 
-struct Images {
-    
-    var image: UIImage
-    var selected: Bool
-}
-
-struct Card : View {
-    @State var data: Images
-    @Binding var selected : [UIImage]
-    
-    var body: some View {
+""")
         
-        ZStack {
-            Image(uiImage: self.data.image)
-            .resizable()
+        for rect in rects {
+            jsonString.append("                coordinates: { \n")
+            jsonString.append("                    x: \(rect.x), y: \(rect.y), width: \(rect.width), height: \(rect.height)\n ")
+            jsonString.append("                }\n")
+            jsonString.append("             },\n")
             
-            if self.data.selected {
-                ZStack {
-                    Color.black.opacity(0.5)
-                    Image(systemName: "checkmark")
-                        .resizable()
-                        .frame(width: 30, height: 30)
-                        .foregroundColor(.white)
-                }
-            }
         }
-        .frame(width: (UIScreen.main.bounds.width - 80) / 3, height: 90)
-        .onTapGesture {
-            if !data.selected {
-               // uniqueID = selected.hashValue
-               // print(selected.hashValue)
-            }
-            
-            if !self.data.selected {
-                self.data.selected = true
-                self.selected.append(self.data.image)
-            }
-            
-            else {
-                for i in 0..<self.selected.count {
-                    if self.selected[i] == self.data.image {
-                        self.selected.remove(at: i)
-                        self.data.selected = false
-                        return
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct Indicator : UIViewRepresentable {
-    func makeUIView(context: Context) -> UIActivityIndicatorView {
-        let view = UIActivityIndicatorView(style: .large)
-        view.startAnimating()
-        return view
-    }
-    
-    func updateUIView(_ uiView: UIViewType, context: Context) {
         
-    }
-}
-
-struct Rect {
-    var x: CGFloat
-    var y: CGFloat
-    var width: CGFloat
-    var height: CGFloat
-}
-
-private func readLocalFile(forName name: String) -> Data? {
-    do {
-        if let bundlePath = Bundle.main.path(forResource: name,
-                                             ofType: "json"),
-            let jsonData = try String(contentsOfFile: bundlePath).data(using: .utf8) {
-            return jsonData
-        }
-    } catch {
-        print(error)
-    }
+        
     
-    return nil
+        
+//        for value in dict.values {
+//            for i in 0..<dict.values.count {
+//                jsonString.append("x: \(value[i].x), ")
+//              //  print(("x: \(value[i].x), "))
+//           // jsonString.append("y: \(value.y)")
+//      //      jsonString.append("\(value.width, )"
+//            }
+//        }
+     }
+    
+    return jsonString
 }
 
 extension CGFloat {
@@ -341,3 +195,5 @@ extension CGFloat {
         return CGFloat(floor(pow(10.0, CGFloat(places)) * self)/pow(10.0, CGFloat(places)))
     }
 }
+
+
